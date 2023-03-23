@@ -63,32 +63,46 @@ app.post("/signup", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password)
-    return res.status(400).json({
+  try {
+    const { username, password } = req.body;
+    if (!username || !password)
+      return res.status(400).json({
+        status: "Failure",
+        message: "Provide both username and password",
+      });
+
+    let user = await User.findOne({ username }).select("+password");
+
+    if (!user || !(await user.passwordCheck(password, user.password)))
+      return res.status(401).json({
+        status: "Failure",
+        message: "Invalid username or password'",
+      });
+
+    createSendToken(user, res);
+  } catch (error) {
+    res.json({
       status: "Failure",
-      message: "Provide both email and password",
+      message: error,
     });
-
-  let user = await User.findOne({ username }).select("+password");
-
-  if (!user || !(await user.passwordCheck(password, user.password)))
-    return res.status(401).json({
-      status: "Failure",
-      message: "Invalid username or password'",
-    });
-
-  createSendToken(user, res);
+  }
 });
 
 app.post("/logout", async (req, res) => {
-  res.cookie("jwt", "Logged Out", {
-    expires: new Date(Date.now() + 10 * 10),
-    httpOnly: true,
-  });
-  res.status(200).json({
-    status: "success",
-  });
+  try {
+    res.cookie("jwt", "Logged Out", {
+      expires: new Date(Date.now() + 10 * 10),
+      httpOnly: true,
+    });
+    res.status(200).json({
+      status: "success",
+    });
+  } catch (error) {
+    res.json({
+      status: "Failure",
+      message: error,
+    });
+  }
 });
 
 app.post("/create-blog", async (req, res) => {
@@ -96,7 +110,10 @@ app.post("/create-blog", async (req, res) => {
     let newBlog = await Blog.create(req.body);
     res.send(newBlog);
   } catch (error) {
-    res.send(error);
+    res.json({
+      status: "Failure",
+      message: error,
+    });
   }
 });
 
@@ -105,7 +122,10 @@ app.get("/blogs", async (req, res) => {
     let blogs = await Blog.find();
     res.send(blogs);
   } catch (error) {
-    res.send(error);
+    res.json({
+      status: "Failure",
+      message: error,
+    });
   }
 });
 
@@ -114,16 +134,24 @@ app.get("/blog/:id", async (req, res) => {
     let blog = await Blog.findOne({ _id: req.params.id });
     res.send(blog);
   } catch (error) {
-    res.send(error);
+    res.json({
+      status: "Failure",
+      message: error,
+    });
   }
 });
 
 app.patch("/update-blog/:id", async (req, res) => {
   try {
-    let updatedBlog = await Blog.findByIdAndUpdate(req.params.id, req.body);
+    let updatedBlog = await Blog.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
     res.send(updatedBlog);
   } catch (error) {
-    res.send(error);
+    res.json({
+      status: "Failure",
+      message: error,
+    });
   }
 });
 
@@ -132,7 +160,10 @@ app.delete("/delete-blog/:id", async (req, res) => {
     await Blog.deleteOne({ _id: req.params.id });
     res.send("Deleted");
   } catch (error) {
-    res.send(error);
+    res.json({
+      status: "Failure",
+      message: error,
+    });
   }
 });
 
